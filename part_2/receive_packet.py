@@ -4,7 +4,7 @@ import argparse
 parser = argparse.ArgumentParser(description='receive server help')
 
 parser.add_argument('--ip', help='ip', default='127.0.0.1', type=str)
-parser.add_argument('--port', help='port', default=12345, type=int)
+parser.add_argument('--port', help='port', default=20001, type=int)
 args = parser.parse_args()
 
 s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
