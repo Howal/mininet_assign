@@ -49,11 +49,11 @@ def test_packet_topo():
     net.pingAll()
 
     mh0 = net.get('mh0')
-    mh0.cmd('python net_init/monitor_node_init.py --self-ip {} &'.format(mh0.IP()))
+    mh0.cmd('python monitor_node_init.py --self-ip {} &'.format(mh0.IP()))
 
     for i in range(computing_hosts_num):
         tmp_h = net.get('ch{}'.format(i + 1))
-        tmp_h.cmd('python net_init/computing_node_init.py --seed-ip {} &'.format(mh0.IP()))
+        tmp_h.cmd('python computing_node_init.py --seed-ip {} &'.format(mh0.IP()))
     print("----- start monitor ----- \n")
     # net.startTerms()
     while True:
