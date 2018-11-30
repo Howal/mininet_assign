@@ -37,9 +37,10 @@ class StarTopo(Topo):
 def test_packet_topo():
     # ----------- test start -------------
     cleanup()
+    computing_hosts_num = 3
 
     # ----------- set topo -----------
-    net = Mininet(topo=StarTopo(10), link=TCLink)
+    net = Mininet(topo=StarTopo(computing_hosts_num), link=TCLink)
 
     # ----------- init net -------------
     net.start()
@@ -50,11 +51,14 @@ def test_packet_topo():
     mh0 = net.get('mh0')
     mh0.cmd('python net_init/monitor_node_init.py --self-ip {} &'.format(mh0.IP()))
 
-    tmp_h = net.get('ch1')
-    tmp_h.cmd('python net_init/computing_node_init.py --seed-ip {} &'.format(mh0.IP()))
-    print("----- start monitor ----- \n{}".format(mh0.IP()))
-    print(mh0.monitor())
-    print(tmp_h.monitor())
+    for i in range(computing_hosts_num):
+        tmp_h = net.get('ch{}'.format(i + 1))
+        tmp_h.cmd('python net_init/computing_node_init.py --seed-ip {} &'.format(mh0.IP()))
+    print("----- start monitor ----- \n")
+    # net.startTerms()
+    while True:
+        print(mh0.monitor())
+        # print(tmp_h.monitor())
 
     '''
     mh0.sendCmd('sudo python net_init/monitor_node_init.py &')
