@@ -53,7 +53,7 @@ def test_packet_topo():
 
     for i in range(computing_hosts_num):
         tmp_h = net.get('ch{}'.format(i + 1))
-        tmp_h.cmd('python computing_node_init.py --seed-ip {} &'.format(mh0.IP()))
+        tmp_h.cmd('python computing_node_init.py --self-ip {} --seed-ip {} &'.format(tmp_h.IP(), mh0.IP()))
     print("----- start monitor ----- \n")
     # net.startTerms()
     while True:

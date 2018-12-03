@@ -1,3 +1,4 @@
+import json
 import socket
 import argparse
 import time
@@ -13,29 +14,37 @@ if __name__ == '__main__':
     parser.add_argument('--seed-port-in', help='port', default=20000, type=int)
     args = parser.parse_args()
 
-    # first connect to seed node
-    client_out = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    client_out.connect((args.seed_ip, args.seed_port_in))
-    mystring = ''
-    for i in range(10000):
-        mystring = '{} init{}'.format(mystring, i)
-    send_msg(client_out, mystring)
-    data = recv_msg(client_out)
-    print(data)
-    time.sleep(3)
-    client_out.close()
+    # first connect to seed node and get ip list
+    computing_node_list = []
+    while True:
+        client_out = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        client_out.connect_ex((args.seed_ip, args.seed_port_in))
+        send_msg(client_out, '#INIT#')
+        raw_data = recv_msg(client_out)
+        client_out.close()
+        print(raw_data)
+        try:
+            computing_node_list = json.loads(raw_data)
+        except Exception as e:
+            print('JSONDecodeError')
+        else:
+            if type(computing_node_list) is list:
+                break
 
-    #
+    # start mine
+    # listen in case got new block msg
+    # send to others if get a new block
+    # 
     client_in = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     client_in.bind((args.self_ip, args.self_port_in))
     client_in.listen(10)
 
     while True:
         client_out = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        client_out.connect((args.seed_ip, args.seed_port_in))
+        client_out.connect_ex((args.seed_ip, args.seed_port_in))
         client_out.sendall('hello! from client!')
-        data = client_out.recv(4096)
-        print(data)
+        raw_data = client_out.recv(4096)
+        print(raw_data)
         time.sleep(3)
         client_out.close()
 

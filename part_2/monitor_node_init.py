@@ -1,3 +1,4 @@
+import json
 import socket
 import argparse
 from socket_util import *
@@ -14,25 +15,27 @@ if __name__ == '__main__':
     server_in.bind((args.self_ip, args.self_port_in))
     server_in.listen(10)
 
-    server_out = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    # server_out = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    # server_out.close()
 
     # packet = open('data_backup/mh0_packet.txt', 'w')
+    # packet.write("%s: %s\n" % (addr, data))
+    # packet.flush()
+
     computing_node_list = []
 
     while True:
-        print('---start')
         connect, addr = server_in.accept()
-        print('---accept')
-
-        total_data = []
-        data = recv_msg(connect)
-        print('---recv')
-        print('{} + {}'.format(data, addr))
-        # packet.write("%s: %s\n" % (addr, data))
-        # packet.flush()
-        send_msg(connect, '{} + from server.'.format(addr))
-        print('---send')
+        raw_data = recv_msg(connect)
+        print('Addr: {}.\nData: {}.'.format(addr, raw_data))
+        if raw_data == '#INIT#':
+            if addr[0] not in computing_node_list:
+                computing_node_list.append(addr[0])
+            send_msg(connect, '#IPLIST#{}'.format(json.dumps(computing_node_list)))
+        elif raw_data == 'break':
+            return
+        else:
+            continue
         connect.close()
-        print('---close')
+
     server_in.close()
-    server_out.close()
