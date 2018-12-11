@@ -1,7 +1,9 @@
 import json
 import socket
 import argparse
-from socket_util import *
+import time
+import util_config as config
+from util_socket import send_msg, recv_msg, get_self_ip
 
 
 if __name__ == '__main__':

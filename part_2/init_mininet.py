@@ -4,8 +4,16 @@ from mininet.link import TCLink
 from mininet.clean import cleanup
 from mininet.cli import CLI
 from mininet.util import pmonitor
-from mininet.log import *
+from mininet.log import setLogLevel
 import time
+import os
+
+
+def my_cleanup():
+    # clear process
+    os.system("pkill %python3")
+    # mininet cleanup
+    cleanup()
 
 
 class StarTopo(Topo):
@@ -34,9 +42,9 @@ class StarTopo(Topo):
             self.addLink(s0, tmp_h)
 
 
-def test_packet_topo():
-    # ----------- test start -------------
-    cleanup()
+def start_mininet():
+    # ----------- start -------------
+    my_cleanup()
     computing_hosts_num = 3
 
     # ----------- set topo -----------
@@ -44,48 +52,26 @@ def test_packet_topo():
 
     # ----------- init net -------------
     net.start()
-    # first test
     # CLI(net)
+    # net.startTerms()
     net.pingAll()
 
     mh0 = net.get('mh0')
-    mh0.cmd('python init_monitor_node.py --self-ip {} &'.format(mh0.IP()))
+    mh0.cmd('python3 init_monitor_node.py --self-ip {} &'.format(mh0.IP()))
 
     for i in range(computing_hosts_num):
         tmp_h = net.get('ch{}'.format(i + 1))
-        tmp_h.cmd('python init_regular_node.py --self-ip {} --seed-ip {} &'.format(tmp_h.IP(), mh0.IP()))
+        tmp_h.cmd('python3 init_regular_node.py -seed-ip {} &'.format(mh0.IP()))
+
     print("----- start monitor ----- \n")
-    # net.startTerms()
     while True:
         print(mh0.monitor())
-        # print(tmp_h.monitor())
 
-    '''
-    mh0.sendCmd('sudo python net_init/monitor_node_init.py &')
-    # use monitor host as hard-code seed in Bitcoin
-    for tmp_h in ch_list:
-        tmp_h.sendCmd('sudo python net_init/computing_node_init.py --ip {} &'.format(mh0.IP()))
-        _tmp_result = tmp_h.waitOutput(verbose=False)
-    '''
-    '''
-    h1.sendCmd('python receive_packet.py --ip {} &'.format(h1.IP()))
-    _tmp_result = h1.waitOutput()
-    h2.sendCmd('sudo python send_packet.py --ip {} --data {}'.format(h1.IP(), "\'hello world!\'"))
-    _tmp_result = h2.waitOutput()
-    h2.sendCmd('python send_packet.py --ip {} --data {}'.format(h1.IP(), "my_test."))
-    _tmp_result = h2.waitOutput()
-    h2.sendCmd('python send_packet.py --ip {} --data {}'.format(h1.IP(), "my_test2"))
-    _tmp_result = h2.waitOutput()
-    '''
-
-    # make sure h1 got the final msg
-    time.sleep(5)
-    mh0.cmd('kill %python')
-    tmp_h.cmd('kill %python')
     # ---------- test stop ------------
+    time.sleep(5)
     net.stop()
 
 
 if __name__ == '__main__':
     setLogLevel('info')
-    test_packet_topo()
+    start_mininet()
