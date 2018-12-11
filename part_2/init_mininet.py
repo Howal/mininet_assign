@@ -56,6 +56,7 @@ def start_mininet():
     # net.startTerms()
     net.pingAll()
 
+    # start monitor node which is also used as bootstrapper
     mh0 = net.get('mh0')
     mh0.cmd('python3 init_monitor_node.py --self-ip {} &'.format(mh0.IP()))
 
