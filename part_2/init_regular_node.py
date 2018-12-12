@@ -8,11 +8,12 @@ from util_block import Block
 import asyncio
 
 
+# Mengyang TODO
 async def minining_based_on_PoW():
     global args, blockchain, tranxqueue, peerlist
 
     while True:
-        # select tranx from tranxlist
+        # select tranx from tranxqueue
 
         # check the tranx (this can be skipped for now)
 
@@ -24,6 +25,7 @@ async def minining_based_on_PoW():
         await asyncio.sleep(config.MINI_SLEEP_TIME)
 
 
+# Ende TODO
 async def receive_msg_and_forward():
     global args, blockchain, tranxqueue
 
@@ -36,9 +38,18 @@ async def receive_msg_and_forward():
         # accept connect
         connect, addr = await node_in.accept()
         # receive msg
-
+        raw_data = recv_msg(connect)
         # distinguish block info or tranx info
-
+        if raw_data == '#TRANX':
+            # tranx
+            continue
+        elif raw_data == '#BLOCK':
+            # block
+            continue
+        elif raw_data == '#PEERCHECK':
+            # this is used for valid node check
+            # no need to write any code here
+            continue
         # update the blockchain or tranxqueue
 
         # forward to other node
@@ -48,14 +59,30 @@ async def update_peer_node_list():
     global args, peerlist
 
     while True:
+        peer_out = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         # check each element in peerlist valid or not
-
-        # delete invalid ones
-
+        for ip_tmp in peerlist:
+            try:
+                peer_out.connect_ex((ip_tmp, config.PORT_IN))
+            except Exception as e:
+                print(e)
+                # delete invalid ones
+                peerlist.remove(ip_tmp)
+            else:
+                send_msg(peer_out, '#PEERCHECK')
+            finally:
+                peer_out.close()
         # acquire more peer if needed
         if len(peerlist) < config.MIN_PEER_NUM:
             # get peer from bootstrapper
-            continue
+            peer_out = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            peer_out.connect_ex((args.seed_ip, config.PORT_IN))
+            send_msg(peer_out, '#PEER')
+            tmp_ip = recv_msg(peer_out)
+            if tmp_ip not in peerlist:
+                peerlist.append(tmp_ip)
+            peer_out.close()
+
         await asyncio.sleep(config.UPDATE_SLEEP_TIME)
 
 
@@ -65,10 +92,15 @@ def get_init_from_bootstrapper():
 
     # init peerlist
     peerlist = [args.seed_ip]
-    # acquire more peer if needed
-    while len(peerlist) < config.MIN_PEER_NUM:
-        # get more peer from bootstrapper
-        continue
+
+    init_out = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    init_out.connect_ex((args.seed_ip, config.PORT_IN))
+    send_msg(init_out, '#INIT')
+    raw_data = recv_msg(init_out)
+    tmp_data = json.loads(raw_data)
+    blockchain = tmp_data[0]
+    tranxqueue = tmp_data[1]
+    init_out.close()
 
 
 def init_regular_node():

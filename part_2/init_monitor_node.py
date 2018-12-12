@@ -3,9 +3,11 @@ import socket
 import argparse
 import time
 import util_config as config
-from util_socket import send_msg, recv_msg, get_self_ip
+from util_socket import send_msg, recv_msg
 from util_block import Block, create_genesis_block
 import asyncio
+import random
+import datetime as date
 
 
 async def send_pseudo_tranx():
@@ -13,6 +15,11 @@ async def send_pseudo_tranx():
 
     while True:
         # send pseudo tranx with dummy data for function test
+        tranx_out = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        tranx_out.connect_ex((peerlist[random.randint(0, len(peerlist) - 1)], config.PORT_IN))
+        send_msg(tranx_out, '#TRANX')
+        send_msg(tranx_out, 'dummy_tranx_{}'.format(date.datetime.time()))
+        tranx_out.close()
         await asyncio.sleep(60)
 
 
@@ -21,8 +28,14 @@ async def node_logger():
 
     while True:
         # decide what to write and how to arrange the result
-        packet = open('{}/monitor.txt'.format(config.LOG_DIR), 'w')
-        packet.write("dummy")
+        packet = open('{}/blockchain_{}.txt'.format(config.LOG_DIR, date.datetime.now()), 'w')
+        packet.write('{}'.format(json.dumps(blockchain)))
+        packet.flush()
+        packet = open('{}/tranxqueue_{}.txt'.format(config.LOG_DIR, date.datetime.now()), 'w')
+        packet.write('{}'.format(json.dumps(tranxqueue)))
+        packet.flush()
+        packet = open('{}/peerlist_{}.txt'.format(config.LOG_DIR, date.datetime.now()), 'w')
+        packet.write('{}'.format(json.dumps(peerlist)))
         packet.flush()
         await asyncio.sleep(60)
 
@@ -43,16 +56,22 @@ async def reply_all_request():
         if raw_data == '#INIT':
             if addr[0] not in peerlist:
                 peerlist.append(addr[0])
-            send_msg(connect, '#IPLIST#{}'.format(json.dumps(peerlist)))
-        # update peer list
-        elif raw_data == '#PEER':
-            return
+            send_msg(connect, '{}'.format(json.dumps([blockchain, tranxqueue])))
+
+        # Ende TODO
         # receive tranx
         elif raw_data == '#TRANX':
             return
         # receive block
         elif raw_data == '#BLOCK':
             return
+
+        # update peer list
+        elif raw_data == '#PEER':
+            ip_tmp = addr[0]
+            while ip_tmp == addr[0]:
+                ip_tmp = peerlist[random.randint(0, len(peerlist) - 1)]
+            send_msg(connect, ip_tmp)
         # else?
         else:
             continue
@@ -65,10 +84,19 @@ async def update_peer_node_list():
     global args, peerlist
 
     while True:
+        peer_out = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         # check each element in peerlist valid or not
-
-        # delete invalid ones
-
+        for ip_tmp in peerlist:
+            try:
+                peer_out.connect_ex((ip_tmp, config.PORT_IN))
+            except Exception as e:
+                print(e)
+                # delete invalid ones
+                peerlist.remove(ip_tmp)
+            else:
+                send_msg(peer_out, '#PEERCHECK')
+            finally:
+                peer_out.close()
         # wait for a moment
         await asyncio.sleep(config.UPDATE_SLEEP_TIME)
 
