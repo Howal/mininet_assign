@@ -61,10 +61,36 @@ async def reply_all_request():
         # Ende TODO
         # receive tranx
         elif raw_data == '#TRANX':
-            return
+            # tranx
+            tranx = recv_msg(connect)
+            if tranx not in tranxqueue:
+                # update the tranxqueue
+                tranxqueue.append(tranx)
+                # forward to other node
+                for ele in peerlist:
+                    tranx_out = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                    tranx_out.connect_ex((ele, config.PORT_IN))
+                    send_msg(tranx_out, '#TRANX')
+                    send_msg(tranx_out, tranx)
+                    tranx_out.close()
+            continue
         # receive block
         elif raw_data == '#BLOCK':
-            return
+            # block
+            raw_data = recv_msg(connect)
+            block = json.loads(raw_data)
+            # check
+            if block.index > blockchain[-1].index and block.hash_block().startswith(config.HASH_HARD):
+                # update the blockchain
+                blockchain.append(block)
+                for ele in peerlist:
+                    # forward to other node
+                    block_out = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                    block_out.connect_ex((ele, config.PORT_IN))
+                    send_msg(block_out, '#BLOCK')
+                    send_msg(block_out, block)
+                    block_out.close()
+            continue
 
         # update peer list
         elif raw_data == '#PEER':

@@ -4,8 +4,9 @@ import argparse
 import time
 import util_config as config
 from util_socket import send_msg, recv_msg, get_self_ip
-from util_block import Block
+from util_block import Block, next_block
 import asyncio
+import random
 
 
 # Mengyang TODO
@@ -16,10 +17,31 @@ async def minining_based_on_PoW():
         # select tranx from tranxqueue
 
         # check the tranx (this can be skipped for now)
+        await_add_tranxqueue = []
+        for tranx in tranxqueue:
+            if tranx:
+                await_add_tranxqueue.append(tranx)
+            if len(await_add_tranxqueue) > 3:
+                break
 
         # use Block to get hash and check the hex result
 
         # check whether the hex agree with the diff-level (the number of zeros in the front)
+        last_block = blockchain[-1]
+        block = next_block(last_block)
+
+        data = ''.join(await_add_tranxqueue)
+        block.data = data + str(random.random)
+        block_hash = block.hash_block()
+
+        if block_hash[0:3] == config.HASH_HARD:
+            blockchain += block
+            for ele in peerlist:
+                block_out = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                block_out.connect_ex((ele, config.PORT_IN))
+                send_msg(block_out, '#BLOCK')
+                send_msg(block_out, block)
+                block_out.close()
 
         # simulate the computing power
         await asyncio.sleep(config.MINI_SLEEP_TIME)
@@ -42,17 +64,39 @@ async def receive_msg_and_forward():
         # distinguish block info or tranx info
         if raw_data == '#TRANX':
             # tranx
+            tranx = recv_msg(connect)
+            if tranx not in tranxqueue:
+                # update the tranxqueue
+                tranxqueue.append(tranx)
+                # forward to other node
+                for ele in peerlist:
+                    tranx_out = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                    tranx_out.connect_ex((ele, config.PORT_IN))
+                    send_msg(tranx_out, '#TRANX')
+                    send_msg(tranx_out, tranx)
+                    tranx_out.close()
             continue
         elif raw_data == '#BLOCK':
             # block
+            raw_data = recv_msg(connect)
+            block = json.loads(raw_data)
+            # check
+            if block.index > blockchain[-1].index and block.hash_block().startswith(config.HASH_HARD):
+                # update the blockchain
+                blockchain.append(block)
+                for ele in peerlist:
+                    # forward to other node
+                    block_out = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                    block_out.connect_ex((ele, config.PORT_IN))
+                    send_msg(block_out, '#BLOCK')
+                    send_msg(block_out, block)
+                    block_out.close()
             continue
         elif raw_data == '#PEERCHECK':
             # this is used for valid node check
             # no need to write any code here
             continue
-        # update the blockchain or tranxqueue
-
-        # forward to other node
+        connect.close()
 
 
 async def update_peer_node_list():
